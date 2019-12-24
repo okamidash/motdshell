@@ -1,0 +1,42 @@
+#!/bin/sh
+HOSTN=`hostname -s`
+USER=`whoami`
+
+RED=`tput setaf 1`
+GREEN=`tput setaf 2`
+YELLOW=`tput setaf 3`
+RESET=`tput sgr0`
+
+DISK_SIZE=`df -Ph / |  grep "G" | awk '{print $2}' | tr -d '\n'`
+DISK_USED=`df -Ph / |  grep "G" | awk '{print $3}' | tr -d '\n'`
+DISK_FREE=`df -Ph / |  grep "G" | awk '{print $4}' | tr -d '\n'`
+DISK_PERC=`df -Ph / |  grep "G" | awk '{print $5}' | sed 's/\%//g' | tr -d '\n'`
+
+if [[ $DISK_PERC -ge "60" ]]; then
+    DISK_COL=$YELLOW
+    if [[ $DISK_PERC -ge "90" ]]; then
+        DISK_COL=$RED
+    fi
+else
+    DISK_COL=$GREEN
+fi
+
+SYS_IP=`ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p' | tr '\n' ' '`
+NAMSERVER=`cat /etc/resolv.conf | grep "nameserver" | awk '{print $2}' | tr '\n' ' '`
+
+STOPPED_VMS=`sudo virsh list --name --inactive | sed '$ d' | wc -l`
+RUNNING_VMS=`sudo virsh list --name | sed '$ d' | wc -l`
+
+RUNNING_DOCKER=`docker ps -q | wc -l`
+STOPPED_DOCKER=`docker container list -f "status=exited" -q | wc -l`
+
+FAILED_UNITS=`sudo systemctl list-units --state=failed | grep failed | wc -l`
+RUNNING_UNITS=`sudo systemctl list-units --state=running | grep running | wc -l`
+figlet -tf smslant $HOSTN | lolcat
+echo "
+|Docker             Running: $GREEN$RUNNING_DOCKER$RESET Stopped: $RED$STOPPED_DOCKER$RESET
+|Virtual Machines   Running: $GREEN$RUNNING_VMS$RESET Stopped: $RED$STOPPED_VMS$RESET
+|Systemctl          Running: $GREEN$RUNNING_UNITS$RESET Failed: $RED$FAILED_UNITS$RESET
+|Root Disk          Used: $DISK_COL$DISK_PERC%$RESET Free: $DISK_FREE Used: $DISK_USED
+|Network            IP: $SYS_IP DNS: $NAMSERVER
+"
