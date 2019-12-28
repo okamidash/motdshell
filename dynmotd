@@ -27,8 +27,13 @@ NAMSERVER=`cat /etc/resolv.conf | grep "nameserver" | awk '{print $2}' | tr '\n'
 STOPPED_VMS=`sudo virsh list --name --inactive | sed '$ d' | wc -l`
 RUNNING_VMS=`sudo virsh list --name | sed '$ d' | wc -l`
 
-RUNNING_DOCKER=`docker ps -q | wc -l`
-STOPPED_DOCKER=`docker container list -f "status=exited" -q | wc -l`
+which docker &> /dev/null
+if [ $? -eq 0 ]
+then
+    RUNNING_DOCKER=`docker ps -q | wc -l`
+    STOPPED_DOCKER=`docker container list -f "status=exited" -q | wc -l`
+fi
+
 
 FAILED_UNITS=`sudo systemctl list-units --state=failed | grep failed | wc -l`
 RUNNING_UNITS=`sudo systemctl list-units --state=running | grep running | wc -l`
